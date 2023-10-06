@@ -5,6 +5,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import ejs from "ejs";
 
+const saltRounds = 10;
+
 //import _ from "lodash";
 import mongoose from "mongoose";
 // sudo npm i express body-parser ejs lodash mongoose
@@ -60,17 +62,21 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
   const username = req.body.username;
-  const password = md5(req.body.password);
+  const password = req.body.password;
 
   User.findOne({ email: username })
     .then((result) => {
-      if (result.password === password) {
-        res.render("secrets");
-      } else {
-        res.send(
-          "<h1>Password of E-Mail is incorrect!<br><br> Please Try Again</h1>"
-        );
-      }
+      bcrypt.compare(password, result.password, function (err, result) {
+        if (result === true) {
+          res.render("secrets");
+        } else {
+          res.send(
+            "<h1>Password of E-Mail is incorrect!<br><br> Please Try Again</h1>"
+          );
+        }
+
+        // result == true
+      });
     })
     .catch((error) => {
       res.send(
@@ -85,19 +91,21 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
-  const newUser = new User({
-    email: req.body.username,
-    password: md5(req.body.password),
-  });
-  newUser
-    .save()
-    .then((result) => {
-      console.log("Success!", result);
-      res.render("secrets");
-    })
-    .catch((error) => {
-      console.log("Error code: ", error);
+  bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
+    const newUser = new User({
+      email: req.body.username,
+      password: hash,
     });
+    newUser
+      .save()
+      .then((result) => {
+        console.log("Success!", result);
+        res.render("secrets");
+      })
+      .catch((error) => {
+        console.log("Error code: ", error);
+      });
+  });
 });
 
 app.listen(port, () => {
