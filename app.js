@@ -1,20 +1,16 @@
 //jshint esversion:6
-import 'dotenv/config';
+import "dotenv/config";
+import bcrypt from "bcrypt";
 import express from "express";
 import bodyParser from "body-parser";
 import ejs from "ejs";
-import encrypt from 'mongoose-encryption';
-
 
 //import _ from "lodash";
 import mongoose from "mongoose";
 // sudo npm i express body-parser ejs lodash mongoose
 
-
 const app = express();
 const port = 3000;
-
-
 
 app.set("view engine", "ejs");
 
@@ -45,17 +41,12 @@ db.on("error", (err) => {
 
 // Define your Mongoose schemas and models here
 
-const userSchema = new mongoose.Schema( {
+const userSchema = new mongoose.Schema({
   email: String,
   password: String,
 });
 
-
-userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ['password']});
-
 const User = new mongoose.model("User", userSchema);
-
-
 
 //Schema END--------------------
 
@@ -69,7 +60,7 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
   const username = req.body.username;
-  const password = req.body.password;
+  const password = md5(req.body.password);
 
   User.findOne({ email: username })
     .then((result) => {
@@ -96,7 +87,7 @@ app.get("/register", (req, res) => {
 app.post("/register", (req, res) => {
   const newUser = new User({
     email: req.body.username,
-    password: req.body.password,
+    password: md5(req.body.password),
   });
   newUser
     .save()
