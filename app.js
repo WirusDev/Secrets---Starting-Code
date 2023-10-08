@@ -1,11 +1,10 @@
-//jshint esversion:6
 import bodyParser from "body-parser";
-import "dotenv/config";
 import ejs from "ejs";
 import express from "express";
 import session from "express-session";
 import mongoose from "mongoose";
 import passport from "passport";
+import LocalStrategy from "passport-local";
 import passportLocalMongoose from "passport-local-mongoose";
 
 //import _ from "lodash";
@@ -19,6 +18,17 @@ app.set("view engine", "ejs");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
+
+app.use(
+  session({
+    secret: "My secret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Connection URL
 const dbName = "userDB";
@@ -49,7 +59,13 @@ const userSchema = new mongoose.Schema({
   password: String,
 });
 
-const User = new mongoose.model("User", userSchema);
+userSchema.plugin(passportLocalMongoose);
+
+const User = mongoose.model("User", userSchema);
+
+passport.use(new LocalStrategy(User.authenticate()));
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
 //Schema END--------------------
 
@@ -65,9 +81,44 @@ app.get("/register", (req, res) => {
   res.render("register");
 });
 
-app.post("/login", (req, res) => {});
+app.get("/logout", (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      console.log(err);
+    }
+    res.redirect("/");
+  });
+});
 
-app.post("/register", (req, res) => {});
+app.get("/secrets", (req, res) => {
+  if (req.isAuthenticated()) {
+    res.render("secrets");
+  } else {
+    res.redirect("/login");
+  }
+});
+
+app.post(
+  "/login",
+  passport.authenticate("local", { failureRedirect: "/login" }),
+
+  function (req, res) {
+    res.redirect("/secrets");
+  }
+);
+
+app.post("/register", (req, res) => {
+  const { username, password } = req.body;
+  User.register(new User({ username }), password, (err, user) => {
+    if (err) {
+      console.log(err);
+      return res.redirect("/register");
+    }
+    passport.authenticate("local")(req, res, () => {
+      res.redirect("/secrets");
+    });
+  });
+});
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
