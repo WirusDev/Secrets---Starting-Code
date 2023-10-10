@@ -57,6 +57,12 @@ db.on("error", (err) => {
 
 // Define your Mongoose schemas and models here
 
+const secretSchema = new mongoose.Schema({
+  secret: String,
+});
+
+const Secret = mongoose.model("Secret", secretSchema);
+
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
@@ -170,10 +176,40 @@ app.get("/logout", (req, res) => {
 
 app.get("/secrets", (req, res) => {
   if (req.isAuthenticated()) {
-    res.render("secrets");
+    Secret.find()
+      .then((secrets) => {
+        res.render("secrets", { secretText: secrets });
+      })
+      .catch((err) => {
+        console.log(err);
+      });
   } else {
     res.redirect("/login");
   }
+});
+
+app.get("/submit", (req, res) => {
+  if (req.isAuthenticated()) {
+    res.render("submit");
+  } else {
+    res.redirect("/login");
+  }
+});
+
+app.post("/submit", (req, res) => {
+  const secret = new Secret({
+    secret: req.body.secret,
+  });
+
+  secret
+    .save()
+    .then((result) => {
+      console.log(result);
+      res.redirect("/secrets");
+    })
+    .catch((err) => {
+      console.log("Error Message: ", err);
+    });
 });
 
 app.post(
